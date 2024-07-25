@@ -28,10 +28,6 @@ namespace HomeworkGB9
                         Console.WriteLine("Error.");
                         continue;
                     }
-                    else if (string.Equals(msg.Text, "exit", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        throw new OperationCanceledException("Отмена операции со стороны клиента.");
-                    }
                     Console.WriteLine(msg);
                     Message message = new("Server", "Message sent.");
                     string backJson = message.GetJson();

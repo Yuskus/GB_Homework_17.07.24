@@ -15,12 +15,12 @@ namespace HomeworkGB9
                 Console.WriteLine("Enter your message:");
                 string? text = Console.ReadLine();
                 if (string.IsNullOrEmpty(text)) continue;
+                if (string.Equals(text, "exit", StringComparison.InvariantCultureIgnoreCase)) break;
                 try
                 {
                     Message msg = new(nick, text);
                     string json = msg.GetJson();
                     await udp.SendAsync(Encoding.UTF8.GetBytes(json), endPoint);
-                    if (string.Equals(text, "exit", StringComparison.InvariantCultureIgnoreCase)) break;
                     UdpReceiveResult data = await udp.ReceiveAsync();
                     byte[] buffer = data.Buffer;
                     string backJson = Encoding.UTF8.GetString(buffer);
