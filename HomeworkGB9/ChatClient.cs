@@ -6,7 +6,7 @@ namespace HomeworkGB9
 {
     internal class ChatClient
     {
-        public static void SendMessage(int port, string nick)
+        public static async Task SendMessageAsync(int port, string nick)
         {
             IPEndPoint endPoint = new(IPAddress.Parse("127.0.0.1"), port);
             UdpClient udp = new();
@@ -15,13 +15,14 @@ namespace HomeworkGB9
                 Console.WriteLine("Enter your message:");
                 string? text = Console.ReadLine();
                 if (string.IsNullOrEmpty(text)) continue;
-                else if (string.Equals(text, "exit", StringComparison.InvariantCultureIgnoreCase)) break;
                 try
                 {
                     Message msg = new(nick, text);
                     string json = msg.GetJson();
-                    udp.Send(Encoding.UTF8.GetBytes(json), endPoint);
-                    byte[] buffer = udp.Receive(ref endPoint);
+                    await udp.SendAsync(Encoding.UTF8.GetBytes(json), endPoint);
+                    if (string.Equals(text, "exit", StringComparison.InvariantCultureIgnoreCase)) break;
+                    UdpReceiveResult data = await udp.ReceiveAsync();
+                    byte[] buffer = data.Buffer;
                     string backJson = Encoding.UTF8.GetString(buffer);
                     Message? message = Message.GetMessage(backJson);
                     Console.WriteLine(message);

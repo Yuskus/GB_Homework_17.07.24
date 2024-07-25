@@ -2,19 +2,17 @@
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             const int PORT = 12345;
             
             if (args.Length == 0)
             {
-                Thread thread = new(() => { ChatServer.AcceptMessage(PORT); }) { IsBackground = true };
-                thread.Start();
-                Console.ReadKey(true);
+                await ChatServer.TryAcceptAsync(PORT);
             }
             else
             {
-                ChatClient.SendMessage(PORT, args[0]); 
+                await ChatClient.SendMessageAsync(PORT, args[0]); 
             }
 
             Console.WriteLine("Good bye!");
