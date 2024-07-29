@@ -4,18 +4,19 @@
     {
         static async Task Main(string[] args)
         {
-            const int PORT = 12345;
-            
-            if (args.Length == 0)
+            if (args.Length < 2)
             {
-                await ChatServer.TryAcceptAsync(PORT);
+                Console.WriteLine("Соединение...");
+                var server = ChatServer.Instance();
+                await server.TryAcceptAsync();
             }
             else
             {
-                await ChatClient.SendMessageAsync(PORT, args[0]); 
+                var client = new ChatClient(args[0], int.Parse(args[1]));
+                await client.StartChat(); 
             }
 
-            Console.WriteLine("Good bye!");
+            Console.WriteLine("До свидания!");
         }
     }
 }
