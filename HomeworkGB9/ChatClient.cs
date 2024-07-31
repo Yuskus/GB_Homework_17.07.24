@@ -7,39 +7,39 @@ namespace HomeworkGB9
     internal class ChatClient
     {
         public string Nickname { get; }
-        private IPEndPoint remoteEndPoint = new(IPAddress.Parse("127.0.0.1"), 12345);
+        private readonly IPEndPoint localEndPoint;
+        private readonly IPEndPoint remoteEndPoint;
         private UdpClient udpClient;
         public ChatClient(string name, int port)
         {
             Nickname = name;
-            var localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port);
+            localEndPoint = Chat.GetClientEndPoint(port);
+            remoteEndPoint = Chat.GetServerEndPoint();
             udpClient = new UdpClient(localEndPoint);
             udpClient.Connect(remoteEndPoint);
         }
-        public async Task StartChat()
+        public async Task StartClientAsync()
         {
-            using (var cts = new CancellationTokenSource())
+            using var cts = new CancellationTokenSource();
+            try
             {
-                try
-                {
-                    Task[] tasks = [AcceptMessageAsync(cts.Token), SendMessageAsync(cts) ];
-                    await Task.WhenAll(tasks);
-                }
-                catch (OperationCanceledException exception)
-                {
-                    Console.WriteLine(exception.Message);
-                }
+                Task[] tasks = [AcceptMessagesAsync(cts.Token), SendMessagesAsync(cts)];
+                await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException exception)
+            {
+                Console.WriteLine(exception.Message);
             }
         }
-        public async Task SendMessageAsync(CancellationTokenSource cts)
+        public async Task SendMessagesAsync(CancellationTokenSource cts)
         {
             while (true)
             {
-                string text = EnterText("Вы можете ввести своё сообщение.");
-                string toName = EnterText("Укажите адресата.");
+                string text = Chat.EnterText("Вы можете ввести своё сообщение.");
+                string toName = Chat.EnterText("Укажите адресата.");
 
                 if (string.IsNullOrEmpty(text)) continue;
-                if (text.ToLower().Equals("exit")) cts.Cancel();
+                if (Chat.IsEquals(text, "exit")) cts.Cancel();
 
                 try
                 {
@@ -60,7 +60,7 @@ namespace HomeworkGB9
                 }
             }
         }
-        public async Task AcceptMessageAsync(CancellationToken token)
+        public async Task AcceptMessagesAsync(CancellationToken token)
         {
             while (true)
             {
@@ -81,11 +81,6 @@ namespace HomeworkGB9
                     Console.WriteLine(ex.Message);
                 }
             }
-        }
-        private static string EnterText(string aboutInput)
-        {
-            Console.WriteLine(aboutInput);
-            return Console.ReadLine() ?? "";
         }
     }
 }

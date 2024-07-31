@@ -6,33 +6,31 @@ namespace HomeworkGB9
 {
     internal class ChatServer
     {
-        private static readonly Lazy<ChatServer> instance = new(() => new ChatServer());
         public string Nickname { get; } = "Server";
-        public Dictionary<string, IPEndPoint> ChatMembers = new();
+        public Dictionary<string, IPEndPoint> ChatMembers = [];
+        private static readonly Lazy<ChatServer> instance = new(() => new ChatServer());
         private UdpClient udpClient = new(12345);
         private ChatServer() { }
         public static ChatServer Instance() => instance.Value;
-        public async Task TryAcceptAsync()
+        public async Task StartServerAsync()
         {
-            using (var cts = new CancellationTokenSource())
+            using var cts = new CancellationTokenSource();
+            try
             {
-                try
+                new Task(() =>
                 {
-                    new Task(() =>
-                    {
-                        Console.ReadKey(true);
-                        cts.Cancel();
-                    }).Start();
+                    Console.ReadKey(true);
+                    cts.Cancel();
+                }).Start();
 
-                    await AcceptMessageAsync(cts.Token);
-                }
-                catch (OperationCanceledException exception)
-                {
-                    Console.WriteLine(exception.Message);
-                }
+                await AcceptMessagesAsync(cts.Token);
+            }
+            catch (OperationCanceledException exception)
+            {
+                Console.WriteLine(exception.Message);
             }
         }
-        public async Task AcceptMessageAsync(CancellationToken token)
+        public async Task AcceptMessagesAsync(CancellationToken token)
         {
             MemberBuilder builder = new();
 
@@ -41,16 +39,17 @@ namespace HomeworkGB9
                 token.ThrowIfCancellationRequested();
                 try
                 {
-                    var message = await Accept(builder, token);
+                    Message? message = await AcceptAsync(builder, token);
                     Console.WriteLine(message);
 
                     if (message == null) continue;
 
                     builder.BuildName(message.FromName);
-                    var member = builder.GetMember();
+                    Member sender = builder.GetMember();
 
-                    await SendBack(member, message, token);
-                    await SendToAll(member, message, token);
+                    Message reply = GetReplyMessage(message, sender);
+                    await SendAsync(reply, sender.EndPoint!, token);
+                    await SendToAllAsync(message, sender, token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -62,38 +61,60 @@ namespace HomeworkGB9
                 }
             }
         }
-        private async Task<Message?> Accept(MemberBuilder builder, CancellationToken token)
+        private async Task<Message?> AcceptAsync(MemberBuilder builder, CancellationToken token)
         {
             var data = await udpClient.ReceiveAsync(token);
             builder.BuildEndPoint(data.RemoteEndPoint);
             string json = Encoding.UTF8.GetString(data.Buffer);
             return Message.GetMessage(json);
         }
-        private async Task SendToOne(Message message, IPEndPoint endPoint, CancellationToken token)
+        private async Task SendAsync(Message message, IPEndPoint endPoint, CancellationToken token)
         {
             string json = message.GetJson();
             byte[] buffer = Encoding.UTF8.GetBytes(json);
             await udpClient.SendAsync(buffer, endPoint, token);
         }
-        private async Task SendBack(Member member, Message message, CancellationToken token)
+        private async Task SendToAllAsync(Message message, Member sender, CancellationToken token)
         {
-            Message reply = new(Nickname, "Ошибка"); //дефолтное значение 
+            if (Chat.IsEquals(message.ToName, ""))
+            {
+                if (!ChatMembers.ContainsKey(sender.Name)) return;
 
-            if (IsStringEquals(message.Text, "register"))
-            {
-                if (ChatMembers.TryAdd(member.Name!, member.EndPoint!))
+                List<Task> tasks = [];
+
+                foreach (var chatMember in ChatMembers)
                 {
-                    reply.Text = $"Пользователь {member.Name} успешно добавлен";
+                    if (chatMember.Key != sender.Name)
+                    {
+                        tasks.Add(SendAsync(message, chatMember.Value, token));
+                    }
+                }
+                await Task.WhenAll(tasks);
+            }
+            else if (ChatMembers.TryGetValue(message.ToName, out var memberEndPoint))
+            {
+                await SendAsync(message, memberEndPoint, token);
+            }
+        }
+        private Message GetReplyMessage(Message message, Member sender)
+        {
+            Message reply = new(Nickname, "Ошибка");
+
+            if (Chat.IsEquals(message.Text, "register"))
+            {
+                if (ChatMembers.TryAdd(sender.Name!, sender.EndPoint!))
+                {
+                    reply.Text = $"Пользователь {sender.Name} успешно добавлен";
                 }
             }
-            else if (IsStringEquals(message.Text, "delete"))
+            else if (Chat.IsEquals(message.Text, "delete"))
             {
-                if (ChatMembers.Remove(member.Name!))
+                if (ChatMembers.Remove(sender.Name!))
                 {
-                    reply.Text = $"Пользователь {member.Name} успешно удален";
+                    reply.Text = $"Пользователь {sender.Name} успешно удален";
                 }
             }
-            else if (IsStringEquals(message.Text, "list"))
+            else if (Chat.IsEquals(message.Text, "list"))
             {
                 reply.Text = $"Список участников чата: {string.Join(", ", ChatMembers.Keys)}";
             }
@@ -102,33 +123,7 @@ namespace HomeworkGB9
                 reply.Text = "Сообщение отправлено";
             }
 
-            await SendToOne(reply, member.EndPoint!, token);
-        }
-        private async Task SendToAll(Member member, Message message, CancellationToken token)
-        {
-            if (IsStringEquals(message.ToName, ""))
-            {
-                if (!ChatMembers.ContainsKey(member.Name)) return;
-
-                List<Task> tasks = new();
-
-                foreach (var chatMember in ChatMembers)
-                {
-                    if (chatMember.Key != member.Name)
-                    {
-                        tasks.Add(SendToOne(message, chatMember.Value, token));
-                    }
-                }
-                await Task.WhenAll(tasks);
-            }
-            else if (ChatMembers.ContainsKey(message.ToName))
-            {
-                await SendToOne(message, ChatMembers[message.ToName], token);
-            }
-        }
-        private static bool IsStringEquals(string str1, string str2)
-        {
-            return string.Equals(str1, str2, StringComparison.InvariantCultureIgnoreCase);
+            return reply;
         }
     }
 }
