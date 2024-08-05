@@ -1,6 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
+using HomeworkGB9.Model;
 
 namespace HomeworkGB9
 {
@@ -9,10 +10,10 @@ namespace HomeworkGB9
         public string Nickname { get; } = "Server";
         public Dictionary<string, IPEndPoint> ChatMembers = [];
         private static readonly Lazy<ChatServer> instance = new(() => new ChatServer());
-        private UdpClient udpClient = new(12345);
+        private readonly UdpClient udpClient = new(12345);
         private ChatServer() { }
         public static ChatServer Instance() => instance.Value;
-        public async Task StartServerAsync()
+        public async Task StartServerAsync() //запуск сервера
         {
             using var cts = new CancellationTokenSource();
             try
@@ -30,7 +31,7 @@ namespace HomeworkGB9
                 Console.WriteLine(exception.Message);
             }
         }
-        public async Task AcceptMessagesAsync(CancellationToken token)
+        public async Task AcceptMessagesAsync(CancellationToken token) //прием сообщений и ответы на них
         {
             MemberBuilder builder = new();
 
@@ -40,16 +41,20 @@ namespace HomeworkGB9
                 try
                 {
                     Message? message = await AcceptAsync(builder, token);
-                    Console.WriteLine(message);
-
                     if (message == null) continue;
+
+                    Console.WriteLine(message);
 
                     builder.BuildName(message.FromName);
                     Member sender = builder.GetMember();
 
+                    ChatMembers[sender.Name] = sender.EndPoint!;
                     Message reply = GetReplyMessage(message, sender);
-                    await SendAsync(reply, sender.EndPoint!, token);
-                    await SendToAllAsync(message, sender, token);
+                    if (message.Text == "confirm") continue;
+
+                    await SendAsync(reply, sender.EndPoint!, token); //подтверждение отправки клиенту
+                    await SendUnrecievedAsync(sender, token); //проверка, нет ли непрочитанных для клиента
+                    await SendToAllAsync(message, sender, token); //отправка сообщения клиенту (или клиентам)
                 }
                 catch (OperationCanceledException)
                 {
@@ -59,6 +64,77 @@ namespace HomeworkGB9
                 {
                     Console.WriteLine(ex.Message);
                 }
+            }
+        }
+        private Message GetReplyMessage(Message message, Member sender)
+        {
+            Message reply = new(Nickname, "Сообщение отправлено");
+
+            if (Chat.IsEquals(message.Text, "register"))
+            {
+                if (Register(sender))
+                {
+                    reply.Text = $"Пользователь {sender.Name} зарегестрирован";
+                }
+            }
+            else if (Chat.IsEquals(message.Text, "delete"))
+            {
+                if (ChatMembers.Remove(sender.Name))
+                {
+                    reply.Text = $"Пользователь {sender.Name} вышел из чата";
+                }
+            }
+            else if (Chat.IsEquals(message.Text, "list"))
+            {
+                reply.Text = $"Сейчас онлайн: {string.Join(", ", ChatMembers.Keys)}";
+            }
+            else if (Chat.IsEquals(message.Text, "confirm"))
+            {
+                Confirm(message.Id);
+            }
+
+            return reply;
+        }
+        private async Task SendUnrecievedAsync(Member sender, CancellationToken token)
+        {
+            using var context = new ChatDbContext();
+
+            var senderFromDb = context.Users.FirstOrDefault(x => x.Name == sender.Name);
+            if (senderFromDb == null) return;
+            var undeliveredList = senderFromDb.ToMessages.Where(x => x.IsRecieved == false).ToList();
+
+            foreach (var undeliveredMessage in undeliveredList)
+            {
+                var message = Message.ConvertFromDatabase(undeliveredMessage);
+                message.Text = "[непрочитанное сообщение]" + message.Text;
+                await SendAsync(message, sender.EndPoint!, token);
+                undeliveredMessage.IsRecieved = true;
+                context.SaveChanges();
+            }
+        }
+        private async Task SendToAllAsync(Message message, Member sender, CancellationToken token)
+        {
+            if (ChatMembers.TryGetValue(message.ToName, out var memberEndPoint))
+            {
+                AddMessageToDatabase(message);
+                await SendAsync(message, memberEndPoint, token);
+            }
+            else
+            {
+                if (!ChatMembers.ContainsKey(sender.Name)) return;
+
+                List<Task> tasks = [];
+
+                foreach (var chatMember in ChatMembers)
+                {
+                    if (chatMember.Key != sender.Name)
+                    {
+                        message.ToName = chatMember.Key;
+                        AddMessageToDatabase(message);
+                        tasks.Add(SendAsync(message, chatMember.Value, token));
+                    }
+                }
+                await Task.WhenAll(tasks);
             }
         }
         private async Task<Message?> AcceptAsync(MemberBuilder builder, CancellationToken token)
@@ -74,56 +150,51 @@ namespace HomeworkGB9
             byte[] buffer = Encoding.UTF8.GetBytes(json);
             await udpClient.SendAsync(buffer, endPoint, token);
         }
-        private async Task SendToAllAsync(Message message, Member sender, CancellationToken token)
+        private static bool Register(Member sender)
         {
-            if (Chat.IsEquals(message.ToName, ""))
+            using var context = new ChatDbContext();
+
+            if (context.Users.FirstOrDefault(x => x.Name == sender.Name) == null)
             {
-                if (!ChatMembers.ContainsKey(sender.Name)) return;
-
-                List<Task> tasks = [];
-
-                foreach (var chatMember in ChatMembers)
-                {
-                    if (chatMember.Key != sender.Name)
-                    {
-                        tasks.Add(SendAsync(message, chatMember.Value, token));
-                    }
-                }
-                await Task.WhenAll(tasks);
+                context.Users.Add(new User() { Name = sender.Name });
+                context.SaveChanges();
+                return true;
             }
-            else if (ChatMembers.TryGetValue(message.ToName, out var memberEndPoint))
+            return false;
+        }
+        private static void Confirm(int? id)
+        {
+            using var context = new ChatDbContext();
+            var message = context.Messages.FirstOrDefault(x => x.Id == id);
+
+            if (message != null)
             {
-                await SendAsync(message, memberEndPoint, token);
+                message.IsRecieved = true;
+                context.SaveChanges();
             }
         }
-        private Message GetReplyMessage(Message message, Member sender)
+        private static void AddMessageToDatabase(Message message)
         {
-            Message reply = new(Nickname, "Ошибка");
+            using var context = new ChatDbContext();
 
-            if (Chat.IsEquals(message.Text, "register"))
-            {
-                if (ChatMembers.TryAdd(sender.Name!, sender.EndPoint!))
-                {
-                    reply.Text = $"Пользователь {sender.Name} успешно добавлен";
-                }
-            }
-            else if (Chat.IsEquals(message.Text, "delete"))
-            {
-                if (ChatMembers.Remove(sender.Name!))
-                {
-                    reply.Text = $"Пользователь {sender.Name} успешно удален";
-                }
-            }
-            else if (Chat.IsEquals(message.Text, "list"))
-            {
-                reply.Text = $"Список участников чата: {string.Join(", ", ChatMembers.Keys)}";
-            }
-            else
-            {
-                reply.Text = "Сообщение отправлено";
-            }
+            var sender = context.Users.FirstOrDefault(x => x.Name == message.FromName);
+            var recipient = context.Users.FirstOrDefault(x => x.Name == message.ToName);
 
-            return reply;
+            Console.WriteLine("sender: " + sender);
+            Console.WriteLine("recipient: " + recipient);
+
+            var dbMessage = new Model.Message()
+            {
+                Text = message.Text,
+                CreationTime = message.Time,
+                IsRecieved = false,
+                SenderId = sender?.Id,
+                RecipientId = recipient?.Id
+            };
+
+            context.Messages.Add(dbMessage);
+            message.Id = dbMessage.Id;
+            context.SaveChanges();
         }
     }
 }

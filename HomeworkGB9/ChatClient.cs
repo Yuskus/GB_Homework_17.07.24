@@ -9,7 +9,7 @@ namespace HomeworkGB9
         public string Nickname { get; }
         private readonly IPEndPoint localEndPoint;
         private readonly IPEndPoint remoteEndPoint;
-        private UdpClient udpClient;
+        private readonly UdpClient udpClient;
         public ChatClient(string name, int port)
         {
             Nickname = name;
@@ -43,11 +43,12 @@ namespace HomeworkGB9
 
                 try
                 {
+                    //проверка прерывания
                     cts.Token.ThrowIfCancellationRequested();
-                    var message = new Message(Nickname, text);
-                    if (toName != "") message.ToName = toName;
-                    string json = message.GetJson();
-                    byte[] buffer = Encoding.UTF8.GetBytes(json);
+
+                    //отправка
+                    Message message = new(Nickname, toName, text);
+                    byte[] buffer = Encoding.UTF8.GetBytes(message.GetJson());
                     await udpClient.SendAsync(buffer);
                 }
                 catch (OperationCanceledException)
@@ -66,11 +67,19 @@ namespace HomeworkGB9
             {
                 try
                 {
+                    //проверка прерывания
                     token.ThrowIfCancellationRequested();
+
+                    //прием
                     var data = await udpClient.ReceiveAsync(token);
                     string json = Encoding.UTF8.GetString(data.Buffer);
                     var message = Message.GetMessage(json);
                     Console.WriteLine(message);
+
+                    //подтверждение доставки
+                    var confirmMessage = new Message(Nickname, "confirm") { Id = message?.Id };
+                    byte[] buffer = Encoding.UTF8.GetBytes(confirmMessage.GetJson());
+                    await udpClient.SendAsync(buffer, token);
                 }
                 catch (OperationCanceledException)
                 {
