@@ -1,67 +1,77 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Text;
+﻿using HomeworkGB9.Abstractions;
 
 namespace HomeworkGB9
 {
-    internal class ChatClient
+    public class ChatClient(string name, IMessageSource source)
     {
-        public string Nickname { get; }
-        private readonly IPEndPoint localEndPoint;
-        private readonly IPEndPoint remoteEndPoint;
-        private readonly UdpClient udpClient;
-        public ChatClient(string name, int port)
-        {
-            Nickname = name;
-            localEndPoint = Chat.GetClientEndPoint(port);
-            remoteEndPoint = Chat.GetServerEndPoint();
-            udpClient = new UdpClient(localEndPoint);
-            udpClient.Connect(remoteEndPoint);
-        }
+        public string Nickname { get; } = name;
+        private readonly IMessageSource messageSource = source;
+
+        //запуск клиента асинхронно
         public async Task StartClientAsync()
         {
             using var cts = new CancellationTokenSource();
             try
             {
-                Task[] tasks = [AcceptMessagesAsync(cts.Token), SendMessagesAsync(cts)];
-                await Task.WhenAll(tasks);
+                //запуск асинхронно приема и отправки
+                await Task.WhenAll(ReceiveMessagesAsync(cts.Token), SendMessagesAsync(cts));
             }
             catch (OperationCanceledException exception)
             {
+                //обработка исключения прерывания и завершение работы программы
                 Console.WriteLine(exception.Message);
             }
+
+            //запрос на удаления из списка участников чата
+            await Delete();
         }
+
+        //отправка сообщений асинхронно
         public async Task SendMessagesAsync(CancellationTokenSource cts)
         {
+            CancellationToken token = cts.Token;
+
+            //автоматическая регистрация пользователя при входе
+            Console.WriteLine("enter0");
+            await Register(token);
+            Console.WriteLine("enter");
+
             while (true)
             {
+                //ввод
                 string text = Chat.EnterText("Вы можете ввести своё сообщение.");
+                Console.WriteLine(text);
                 string toName = Chat.EnterText("Укажите адресата.");
+                Console.WriteLine(toName);
 
+                //проверки
                 if (string.IsNullOrEmpty(text)) continue;
                 if (Chat.IsEquals(text, "exit")) cts.Cancel();
 
                 try
                 {
                     //проверка прерывания
-                    cts.Token.ThrowIfCancellationRequested();
+                    token.ThrowIfCancellationRequested();
 
                     //отправка
-                    Message message = new(Nickname, toName, text);
-                    byte[] buffer = Encoding.UTF8.GetBytes(message.GetJson());
-                    await udpClient.SendAsync(buffer);
+                    var message = new Message(Nickname, toName, text);
+                    await messageSource.SendAsync(message, token);
                 }
                 catch (OperationCanceledException)
                 {
+                    //пересыл исключения прерывания в вызывающий метод
                     throw;
                 }
                 catch (Exception ex)
                 {
+                    //ошибки при отправке сообщений
                     Console.WriteLine(ex.Message);
                 }
             }
         }
-        public async Task AcceptMessagesAsync(CancellationToken token)
+
+        //прием сообщений асинхронно
+        public async Task ReceiveMessagesAsync(CancellationToken token)
         {
             while (true)
             {
@@ -71,25 +81,44 @@ namespace HomeworkGB9
                     token.ThrowIfCancellationRequested();
 
                     //прием
-                    var data = await udpClient.ReceiveAsync(token);
-                    string json = Encoding.UTF8.GetString(data.Buffer);
-                    var message = Message.GetMessage(json);
+                    var message = await messageSource.ReceiveAsync(token);
                     Console.WriteLine(message);
 
-                    //подтверждение доставки
-                    var confirmMessage = new Message(Nickname, "confirm") { Id = message?.Id };
-                    byte[] buffer = Encoding.UTF8.GetBytes(confirmMessage.GetJson());
-                    await udpClient.SendAsync(buffer, token);
+                    //подтверждение доставки сообщения
+                    await Confirm(message, token);
                 }
                 catch (OperationCanceledException)
                 {
+                    //пересыл исключения прерывания в вызывающий метод
                     throw;
                 }
                 catch (Exception ex)
                 {
+                    //ошибки при приеме или отправке сообщений
                     Console.WriteLine(ex.Message);
                 }
             }
+        }
+
+        //запрос на регистрацию в чате
+        private async Task Register(CancellationToken token)
+        {
+            Message registerMessage = new(Nickname) { Command = Command.Register };
+            await messageSource.SendAsync(registerMessage, token);
+        }
+
+        //подтверждение доставки сообщения
+        private async Task Confirm(Message? message, CancellationToken token)
+        {
+            Message confirmMessage = new(Nickname) { Id = message?.Id, Command = Command.Confirm };
+            await messageSource.SendAsync(confirmMessage, token);
+        }
+
+        //запрос на удаление
+        private async Task Delete()
+        {
+            Message deleteMessage = new(Nickname) { Command = Command.Delete };
+            await messageSource.SendAsync(deleteMessage, default);
         }
     }
 }

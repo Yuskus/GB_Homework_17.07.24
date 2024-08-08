@@ -2,7 +2,7 @@
 
 namespace HomeworkGB9
 {
-    internal interface IMemberBuilder
+    public interface IMemberBuilder
     {
         void BuildName(string name);
         void BuildEndPoint(IPEndPoint endPoint);

@@ -40,7 +40,7 @@ namespace HomeworkGB9.Model
                 entity.Property(m => m.CreationTime)
                       .HasColumnType("timestamp")
                       .HasColumnName("creation_time");
-                entity.Property(m => m.IsRecieved)
+                entity.Property(m => m.IsReceived)
                       .HasColumnName("is_recieved");
                 entity.Property(m => m.SenderId)
                       .HasColumnName("sender_id");

@@ -2,13 +2,22 @@
 
 namespace HomeworkGB9
 {
+    public enum Command
+    {
+        Message,
+        Register,
+        Delete,
+        Confirm
+    }
     public class Message
     {
+        public int? Id { get; set; }
         public string FromName { get; set; } = "";
         public string ToName { get; set; } = "";
         public string Text { get; set; } = "";
+        public Command Command { get; set; } = Command.Message;
         public DateTime Time { get; set; }
-        public int? Id { get; set; } 
+        
         public Message()
         {
             Time = DateTime.Now;
@@ -25,11 +34,17 @@ namespace HomeworkGB9
         {
             ToName = toName;
         }
-        public string GetJson() => JsonSerializer.Serialize(this);
-        public static Message? GetMessage(string json) => JsonSerializer.Deserialize<Message>(json);
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(this);
+        }
+        public static Message? ToMessage(string json)
+        {
+            return JsonSerializer.Deserialize<Message>(json);
+        }
         public static Message ConvertFromDatabase(Model.Message messageEntity)
         {
-            var convertedMessage = new Message()
+            return new Message()
             {
                 FromName = messageEntity.Sender?.Name ?? "",
                 ToName = messageEntity.Recipient?.Name ?? "",
@@ -37,8 +52,21 @@ namespace HomeworkGB9
                 Text = messageEntity.Text ?? "",
                 Time = messageEntity.CreationTime
             };
-            return convertedMessage;
         }
-        public override string ToString() => $"От {FromName}, {Time}: {Text}";
+        public static Model.Message ConvertToDatabase(Message message, Model.User? sender, Model.User? recipient)
+        {
+            return new Model.Message()
+            {
+                Text = message.Text,
+                CreationTime = message.Time,
+                IsReceived = false,
+                SenderId = sender?.Id,
+                RecipientId = recipient?.Id
+            };
+        }
+        public override string ToString()
+        {
+            return Command == Command.Message ? $"От {FromName}, {Time}: {Text}" : $"От {FromName}, {Time}: [Command: {Command}] {Text}";
+        }
     }
 }
