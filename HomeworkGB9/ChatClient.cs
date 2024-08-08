@@ -32,9 +32,7 @@ namespace HomeworkGB9
             CancellationToken token = cts.Token;
 
             //автоматическая регистрация пользователя при входе
-            Console.WriteLine("enter0");
             await Register(token);
-            Console.WriteLine("enter");
 
             while (true)
             {
@@ -82,6 +80,8 @@ namespace HomeworkGB9
 
                     //прием
                     var message = await messageSource.ReceiveAsync(token);
+
+                    if (message == null) { continue; }
                     Console.WriteLine(message);
 
                     //подтверждение доставки сообщения

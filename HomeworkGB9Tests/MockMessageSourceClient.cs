@@ -1,14 +1,14 @@
 ﻿using HomeworkGB9;
 using HomeworkGB9.Abstractions;
 using System.Net;
-using System.Net.Sockets;
 
 namespace HomeworkGB9Tests
 {
     internal class MockMessageSourceClient : IMessageSource
     {
-        private readonly UdpClient _udpClientServer = new(12345);
         private readonly Queue<Message> fakeMessages = new();
+        public readonly Queue<Message> confirmMessages = new();
+        public readonly Queue<Message> deliveredMessages = new();
         public MockMessageSourceClient()
         {
             fakeMessages.Enqueue(new Message("Server", "Федор вошел(ла) в чат."));
@@ -21,12 +21,18 @@ namespace HomeworkGB9Tests
         public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder? builder = null)
         {
             await Task.Delay(1, token);
-            return fakeMessages.TryDequeue(out var message) ? message : null;
+            if (fakeMessages.TryDequeue(out var message))
+            {
+                deliveredMessages.Enqueue(message);
+                return message;
+            }
+            return null;
         }
 
         public async Task SendAsync(Message message, CancellationToken token, IPEndPoint? endPoint = null)
         {
             await Task.Delay(1, token);
+            confirmMessages.Enqueue(message);
             return;
         }
     }

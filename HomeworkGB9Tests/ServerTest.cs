@@ -4,7 +4,6 @@ using HomeworkGB9.Model;
 namespace HomeworkGB9Tests
 {
     [TestClass]
-    [Ignore]
     public class ServerTest
     {
         [TestInitialize]
@@ -46,11 +45,11 @@ namespace HomeworkGB9Tests
             Assert.IsNotNull(user1, "Пользователь не создан.");
             Assert.IsNotNull(user2, "Пользователь не создан.");
 
-            Assert.IsTrue(user1.FromMessages.Count == 2, "а вышло: " + user1.FromMessages.Count);
-            Assert.IsTrue(user2.FromMessages.Count == 2, "а вышло: " + user1.FromMessages.Count);
+            Assert.IsTrue(user1.FromMessages.Count == 2, "Актуальный результат: " + user1.FromMessages.Count);
+            Assert.IsTrue(user2.FromMessages.Count == 2, "Актуальный результат: " + user1.FromMessages.Count);
 
-            Assert.IsTrue(user1.ToMessages.Count == 2, "а вышло: " + user1.ToMessages.Count);
-            Assert.IsTrue(user2.ToMessages.Count == 2, "а вышло: " + user1.ToMessages.Count);
+            Assert.IsTrue(user1.ToMessages.Count == 2, "Актуальный результат: " + user1.ToMessages.Count);
+            Assert.IsTrue(user2.ToMessages.Count == 2, "Актуальный результат: " + user1.ToMessages.Count);
 
             var fromFedor = ctx.Messages.Where(x => x.Sender == user1 && x.Recipient == user2).ToList();
             var fromEugenia = ctx.Messages.Where(x => x.Recipient == user1 && x.Sender == user2).ToList();
@@ -58,10 +57,10 @@ namespace HomeworkGB9Tests
             Assert.AreEqual(2, fromFedor.Count);
             Assert.AreEqual(2, fromEugenia.Count);
 
-            Assert.AreEqual("Привет! Я Федор.", fromFedor[0]?.Text, $"а вышло {fromFedor[0]?.Text}");
-            Assert.AreEqual("Привет, Федор! Я Евгения.", fromEugenia[0]?.Text, $"а вышло {fromEugenia[0]?.Text}");
-            Assert.AreEqual("Приятно познакомиться, Евгения.", fromFedor[1]?.Text, $"а вышло {fromFedor[1]?.Text}");
-            Assert.AreEqual("Взаимно, Федор.", fromEugenia[1]?.Text, $"а вышло {fromEugenia[1]?.Text}");
+            Assert.AreEqual("Привет! Я Федор.", fromFedor[0]?.Text, $"Актуальный результат: {fromFedor[0]?.Text}");
+            Assert.AreEqual("Привет, Федор! Я Евгения.", fromEugenia[0]?.Text, $"Актуальный результат: {fromEugenia[0]?.Text}");
+            Assert.AreEqual("Приятно познакомиться, Евгения.", fromFedor[1]?.Text, $"Актуальный результат: {fromFedor[1]?.Text}");
+            Assert.AreEqual("Взаимно, Федор.", fromEugenia[1]?.Text, $"Актуальный результат: {fromEugenia[1]?.Text}");
         }
 
         [TestCleanup]
