@@ -1,6 +1,7 @@
-﻿using System.Text.Json;
+﻿using ModelEFCoreLibrary;
+using System.Text.Json;
 
-namespace HomeworkGB9
+namespace ChatObjectsLibrary
 {
     public enum Command
     {
@@ -42,7 +43,7 @@ namespace HomeworkGB9
         {
             return JsonSerializer.Deserialize<Message>(json);
         }
-        public static Message ConvertFromDatabase(Model.Message messageEntity)
+        public static Message ConvertFromDatabase(MessageEntity messageEntity)
         {
             return new Message()
             {
@@ -53,9 +54,9 @@ namespace HomeworkGB9
                 Time = messageEntity.CreationTime
             };
         }
-        public static Model.Message ConvertToDatabase(Message message, Model.User? sender, Model.User? recipient)
+        public static MessageEntity ConvertToDatabase(Message message, UserEntity? sender, UserEntity? recipient)
         {
-            return new Model.Message()
+            return new MessageEntity()
             {
                 Text = message.Text,
                 CreationTime = message.Time,

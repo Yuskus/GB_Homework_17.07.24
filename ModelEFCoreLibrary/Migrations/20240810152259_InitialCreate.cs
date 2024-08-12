@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace HomeworkGB9.Migrations
+namespace ModelEFCoreLibrary.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -32,7 +32,7 @@ namespace HomeworkGB9.Migrations
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     text = table.Column<string>(type: "text", nullable: true),
-                    creation_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    creation_time = table.Column<DateTime>(type: "timestamp", nullable: false),
                     is_recieved = table.Column<bool>(type: "boolean", nullable: false),
                     sender_id = table.Column<int>(type: "integer", nullable: true),
                     recipient_id = table.Column<int>(type: "integer", nullable: true)

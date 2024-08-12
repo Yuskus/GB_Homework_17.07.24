@@ -1,18 +1,20 @@
-﻿using System.Net;
-using HomeworkGB9.Model;
-using HomeworkGB9.Abstractions;
+﻿using ChatObjectsLibrary;
+using MessagesSourceLibrary;
+using ModelEFCoreLibrary;
 
-namespace HomeworkGB9
+namespace ClientServerLibrary
 {
-    public class ChatServer(IMessageSource source)
+    public class ChatServer<T>(IMessagesSource<T> source) where T : class
     {
         public string Nickname { get; } = "Server";
-        private readonly IMessageSource messageSource = source;
-        private readonly Dictionary<string, IPEndPoint> _chatMembers = [];
+        private readonly IMessagesSource<T> messageSource = source;
+        private readonly Dictionary<string, T> _chatMembers = [];
 
         //запуск сервера асинхронно
         public async Task StartServerAsync()
         {
+            Console.WriteLine("Соединение...");
+
             using var cts = new CancellationTokenSource();
             try
             {
@@ -33,7 +35,7 @@ namespace HomeworkGB9
         //прием сообщений асинхронно
         public async Task ReceiveMessagesAsync(CancellationToken token) //прием сообщений и ответы на них
         {
-            MemberBuilder builder = new();
+            MemberBuilder<T> builder = new();
 
             while (true)
             {
@@ -51,7 +53,7 @@ namespace HomeworkGB9
 
                     //создание объекта отправителя для извлечения ключ-значения
                     builder.BuildName(message.FromName);
-                    Member sender = builder.GetMember();
+                    Member<T> sender = builder.GetMember();
 
                     //проверка и исполнение команды (или отправка сообщений)
                     await ExecuteCommandAsync(message, sender, token);
@@ -65,12 +67,13 @@ namespace HomeworkGB9
                 {
                     //ошибки при приеме или отправке сообщений
                     Console.WriteLine(ex.Message);
+                    Console.WriteLine(ex.StackTrace);
                 }
             }
         }
 
         //исполнение команды, указанной в сообщении
-        private async Task ExecuteCommandAsync(Message message, Member sender, CancellationToken token)
+        private async Task ExecuteCommandAsync(Message message, Member<T> sender, CancellationToken token)
         {
             switch (message.Command)
             {
@@ -82,7 +85,7 @@ namespace HomeworkGB9
         }
 
         //отправка непрочитанных пользователю
-        private async Task SendUnreceivedAsync(Member sender, CancellationToken token)
+        private async Task SendUnreceivedAsync(Member<T> sender, CancellationToken token)
         {
             using var context = new ChatDbContext();
 
@@ -101,7 +104,7 @@ namespace HomeworkGB9
         }
 
         //отправка адресату (или адресатам)
-        private async Task MainUdpSendingAsync(Message message, Member sender, CancellationToken token)
+        private async Task MainUdpSendingAsync(Message message, Member<T> sender, CancellationToken token)
         {
             //подтверждение отправки клиенту
             await messageSource.SendAsync(new Message(Nickname, "Сообщение отправлено"), token, sender.EndPoint!);
@@ -131,7 +134,7 @@ namespace HomeworkGB9
             }
         }
 
-        private async Task SendNotifyAsync(Message message, Member sender, CancellationToken token)
+        private async Task SendNotifyAsync(Message message, Member<T> sender, CancellationToken token)
         {
             List<Task> tasks = [];
 
@@ -146,7 +149,7 @@ namespace HomeworkGB9
         }
 
         //регистрация пользователя, оповещение участников
-        private async Task RegisterAsync(Member sender, CancellationToken token)
+        private async Task RegisterAsync(Member<T> sender, CancellationToken token)
         {
             //создание ключ-значения (клиент и энд поинт)
             //или переназначение энд поинт на актуальный
@@ -156,7 +159,7 @@ namespace HomeworkGB9
             {
                 if (context.Users.FirstOrDefault(x => x.Name == sender.Name) == null)
                 {
-                    context.Users.Add(new User() { Name = sender.Name });
+                    context.Users.Add(new UserEntity() { Name = sender.Name });
                     context.SaveChanges();
                 }
             }
@@ -184,7 +187,7 @@ namespace HomeworkGB9
         }
 
         //удаление из списка, оповещение участников
-        private async Task DeleteAsync(Member sender, CancellationToken token)
+        private async Task DeleteAsync(Member<T> sender, CancellationToken token)
         {
             _chatMembers.Remove(sender.Name);
 

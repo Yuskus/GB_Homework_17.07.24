@@ -1,13 +1,13 @@
-﻿using HomeworkGB9;
-using HomeworkGB9.Abstractions;
+﻿using ChatObjectsLibrary;
+using ClientServerLibrary;
+using MessagesSourceLibrary;
 using System.Net;
 
 namespace HomeworkGB9Tests
 {
-    internal class MockMessageSourceServer : IMessageSource
+    internal class MockMessageSourceServer : IMessagesSource<IPEndPoint>
     {
         private readonly Queue<Message> fakeMessages = new();
-        private ChatServer? server;
         private readonly IPEndPoint endPoint = new(IPAddress.Any, 0);
         public MockMessageSourceServer()
         {
@@ -18,19 +18,15 @@ namespace HomeworkGB9Tests
             fakeMessages.Enqueue(new Message("Федор", "Приятно познакомиться, Евгения."));
             fakeMessages.Enqueue(new Message("Евгения", "Взаимно, Федор."));
         }
-        public void AddServer(ChatServer server)
+        public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<IPEndPoint>? builder)
         {
-            this.server = server;
-        }
-        public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder? builder)
-        {
-            await Task.Delay(1, token);
+            await Task.CompletedTask;
             builder?.BuildEndPoint(endPoint);
             return fakeMessages.TryDequeue(out var message) ? message : null;
         }
         public async Task SendAsync(Message message, CancellationToken token, IPEndPoint? endPoint)
         {
-            await Task.Delay(1, token);
+            await Task.CompletedTask;
             return;
         }
     }

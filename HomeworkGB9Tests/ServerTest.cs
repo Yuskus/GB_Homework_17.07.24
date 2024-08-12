@@ -1,5 +1,7 @@
-using HomeworkGB9;
-using HomeworkGB9.Model;
+using ClientServerLibrary;
+using ModelEFCoreLibrary;
+using System.Net;
+
 
 namespace HomeworkGB9Tests
 {
@@ -7,7 +9,6 @@ namespace HomeworkGB9Tests
     public class ServerTest
     {
         [TestInitialize]
-        [Ignore]
         public void SetUp()
         {
             using var ctx = new ChatDbContext();
@@ -17,12 +18,10 @@ namespace HomeworkGB9Tests
         }
 
         [TestMethod]
-        [Ignore]
         public async Task TestReceive()
         {
             var mock = new MockMessageSourceServer(); // Создаем объект Мока для тестирования
-            var server = new ChatServer(mock); // Создаем сервер и передаем ему Мок
-            mock.AddServer(server);
+            var server = new ChatServer<IPEndPoint>(mock); // Создаем сервер и передаем ему Мок
             using (var cts = new CancellationTokenSource())
             {
                 try
@@ -64,7 +63,6 @@ namespace HomeworkGB9Tests
         }
 
         [TestCleanup]
-        [Ignore]
         public void TearDown()
         {
             using var ctx = new ChatDbContext();

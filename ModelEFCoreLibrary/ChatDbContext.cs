@@ -1,18 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace HomeworkGB9.Model
+namespace ModelEFCoreLibrary
 {
     public partial class ChatDbContext : DbContext
     {
-        public virtual DbSet<User> Users { get; set; }
-        public virtual DbSet<Message> Messages { get; set; }
+        public virtual DbSet<UserEntity> Users { get; set; }
+        public virtual DbSet<MessageEntity> Messages { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseLazyLoadingProxies().UseNpgsql("Host=localhost;Username=postgres;Password=22011995;Database=ChatDb");
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>(entity =>
+            modelBuilder.Entity<UserEntity>(entity =>
             {
                 entity.HasKey(u => u.Id)
                       .HasName("users_pkey");
@@ -26,7 +26,7 @@ namespace HomeworkGB9.Model
                       .HasColumnName("name");
             });
 
-            modelBuilder.Entity<Message>(entity =>
+            modelBuilder.Entity<MessageEntity>(entity =>
             {
                 entity.HasKey(m => m.Id)
                       .HasName("messages_pkey");

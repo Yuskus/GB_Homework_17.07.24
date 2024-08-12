@@ -1,11 +1,12 @@
-﻿using HomeworkGB9.Abstractions;
+﻿using ChatObjectsLibrary;
+using MessagesSourceLibrary;
 
-namespace HomeworkGB9
+namespace ClientServerLibrary
 {
-    public class ChatClient(string name, IMessageSource source)
+    public class ChatClient<T>(string name, IMessagesSource<T> source) where T : class
     {
         public string Nickname { get; } = name;
-        private readonly IMessageSource messageSource = source;
+        private readonly IMessagesSource<T> messageSource = source;
 
         //запуск клиента асинхронно
         public async Task StartClientAsync()
@@ -38,9 +39,7 @@ namespace HomeworkGB9
             {
                 //ввод
                 string text = Chat.EnterText("Вы можете ввести своё сообщение.");
-                Console.WriteLine(text);
                 string toName = Chat.EnterText("Укажите адресата.");
-                Console.WriteLine(toName);
 
                 //проверки
                 if (string.IsNullOrEmpty(text)) continue;
@@ -64,6 +63,7 @@ namespace HomeworkGB9
                 {
                     //ошибки при отправке сообщений
                     Console.WriteLine(ex.Message);
+                    Console.WriteLine(ex.StackTrace);
                 }
             }
         }
