@@ -13,28 +13,18 @@ namespace ClientServerLibrary
         //запуск сервера асинхронно
         public async Task StartServerAsync()
         {
-            Console.WriteLine("Соединение...");
-
             using var cts = new CancellationTokenSource();
-            try
-            {
-                new Task(() =>
-                {
-                    Console.ReadKey(true);
-                    cts.Cancel();
-                }).Start();
-
-                await ReceiveMessagesAsync(cts.Token);
-            }
-            catch (OperationCanceledException exception)
-            {
-                Console.WriteLine(exception.Message);
-            }
+            Task task = ReceiveSendAsync(cts.Token);
+            Console.ReadKey(true);
+            cts.Cancel();
+            await task;
         }
 
         //прием сообщений асинхронно
-        public async Task ReceiveMessagesAsync(CancellationToken token) //прием сообщений и ответы на них
+        public async Task ReceiveSendAsync(CancellationToken token) //прием сообщений и ответы на них
         {
+            Console.WriteLine("Соединение...");
+
             MemberBuilder<T> builder = new();
 
             while (true)
@@ -56,12 +46,19 @@ namespace ClientServerLibrary
                     Member<T> sender = builder.GetMember();
 
                     //проверка и исполнение команды (или отправка сообщений)
-                    await ExecuteCommandAsync(message, sender, token);
+                    switch (message.Command)
+                    {
+                        case Command.Confirm: Confirm(message.Id); break;
+                        case Command.Register: await RegisterAsync(sender, token); break;
+                        case Command.Delete: await DeleteAsync(sender, token); break;
+                        default: await MainUdpSendingAsync(message, sender, token); break;
+                    }
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    //пересыл исключения прерывания в вызывающий метод
-                    throw;
+                    //отмена операции
+                    Console.WriteLine(ex.Message);
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -69,18 +66,6 @@ namespace ClientServerLibrary
                     Console.WriteLine(ex.Message);
                     Console.WriteLine(ex.StackTrace);
                 }
-            }
-        }
-
-        //исполнение команды, указанной в сообщении
-        private async Task ExecuteCommandAsync(Message message, Member<T> sender, CancellationToken token)
-        {
-            switch (message.Command)
-            {
-                case Command.Confirm: Confirm(message.Id); break;
-                case Command.Register: await RegisterAsync(sender, token); break;
-                case Command.Delete: await DeleteAsync(sender, token); break;
-                default: await MainUdpSendingAsync(message, sender, token); break;
             }
         }
 

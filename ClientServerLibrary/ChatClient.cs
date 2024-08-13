@@ -1,5 +1,6 @@
 ﻿using ChatObjectsLibrary;
 using MessagesSourceLibrary;
+using System;
 
 namespace ClientServerLibrary
 {
@@ -12,19 +13,7 @@ namespace ClientServerLibrary
         public async Task StartClientAsync()
         {
             using var cts = new CancellationTokenSource();
-            try
-            {
-                //запуск асинхронно приема и отправки
-                await Task.WhenAll(ReceiveMessagesAsync(cts.Token), SendMessagesAsync(cts));
-            }
-            catch (OperationCanceledException exception)
-            {
-                //обработка исключения прерывания и завершение работы программы
-                Console.WriteLine(exception.Message);
-            }
-
-            //запрос на удаления из списка участников чата
-            await Delete();
+            await Task.WhenAll(ReceiveMessagesAsync(cts.Token), SendMessagesAsync(cts));
         }
 
         //отправка сообщений асинхронно
@@ -37,6 +26,9 @@ namespace ClientServerLibrary
 
             while (true)
             {
+                //ожидание сообщений
+                await Task.Delay(150);
+
                 //ввод
                 string text = Chat.EnterText("Вы можете ввести своё сообщение.");
                 string toName = Chat.EnterText("Укажите адресата.");
@@ -51,13 +43,13 @@ namespace ClientServerLibrary
                     token.ThrowIfCancellationRequested();
 
                     //отправка
-                    var message = new Message(Nickname, toName, text);
-                    await messageSource.SendAsync(message, token);
+                    await messageSource.SendAsync(new Message(Nickname, toName, text), token);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    //пересыл исключения прерывания в вызывающий метод
-                    throw;
+                    //прерывание операции
+                    Console.WriteLine(ex.Message);
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -66,6 +58,9 @@ namespace ClientServerLibrary
                     Console.WriteLine(ex.StackTrace);
                 }
             }
+
+            //запрос на удаления из списка участников чата
+            await Delete();
         }
 
         //прием сообщений асинхронно
@@ -87,10 +82,11 @@ namespace ClientServerLibrary
                     //подтверждение доставки сообщения
                     await Confirm(message, token);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    //пересыл исключения прерывания в вызывающий метод
-                    throw;
+                    //прерывание операции
+                    Console.WriteLine(ex.Message);
+                    break;
                 }
                 catch (Exception ex)
                 {

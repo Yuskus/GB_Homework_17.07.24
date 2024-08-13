@@ -2,36 +2,38 @@
 using MessagesSourceLibrary;
 using NetMQ;
 using NetMQ.Sockets;
-using System.Linq;
 using System.Text;
 
 namespace MessagesSourceNetMQLibrary
 {
     public class MessagesSourceNetMQServer : IMessagesSource<string>
     {
-        private readonly int _port;
-        private readonly RouterSocket _socket;
-        private NetMQFrame? _frame;
-        public MessagesSourceNetMQServer(int port)
+        private readonly int _routerPort;
+        private readonly int _publisherPort;
+        private readonly RouterSocket _routerSocket;
+        private readonly PublisherSocket _publisherSocket;
+        public MessagesSourceNetMQServer(int routerPort, int publisherPort)
         {
-            _port = port;
-            _socket = new RouterSocket();
-            _socket.Bind($"tcp://*:{_port}");
+            _routerPort = routerPort;
+            _publisherPort = publisherPort;
+            _routerSocket = new RouterSocket();
+            _routerSocket.Bind($"tcp://*:{_routerPort}");
+            _publisherSocket = new PublisherSocket();
+            _publisherSocket.Bind($"tcp://*:{_publisherPort}");
         }
         public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<string>? builder)
         {
-            var a = await _socket.ReceiveMultipartMessageAsync();
-            _frame = a.First;
-            string json = a.Last.ConvertToString(Encoding.UTF8);
-            return Message.ToMessage(json);
+            var multyMessage = await _routerSocket.ReceiveMultipartMessageAsync();
+            string json = multyMessage.Last.ConvertToString(Encoding.UTF8);
+            var message = Message.ToMessage(json);
+            if (message == null) { return null; }
+            builder?.BuildEndPoint(message.FromName);
+            return message;
         }
         public async Task SendAsync(Message message, CancellationToken token, string? endPoint)
         {
             await Task.CompletedTask;
-            var request = new NetMQMessage();
-            request.Append(_frame!);
-            request.Append(message.ToJson());
-            _socket.SendMultipartMessage(request);
+            _publisherSocket.SendMoreFrame(endPoint!).SendFrame(message.ToJson());
         }
     }
 }

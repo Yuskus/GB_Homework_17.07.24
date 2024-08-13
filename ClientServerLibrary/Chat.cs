@@ -6,14 +6,15 @@ namespace ClientServerLibrary
     {
         private static readonly string _serverIP = "127.0.0.1";
         private static readonly string _clientIP = "127.0.0.1";
-        private static readonly int _serverPort = 12345;
+        private static readonly int _serverPortFirst = 12345;
+        private static readonly int _serverPortLast = 23456;
         public static IPEndPoint GetServerEndPoint()
         {
-            return new IPEndPoint(IPAddress.Parse(_serverIP), _serverPort);
+            return new IPEndPoint(IPAddress.Parse(_serverIP), _serverPortFirst);
         }
         public static string GetServerEndPointAsString()
         {
-            return $"tcp://{_serverIP}:{_serverPort}";
+            return $"tcp://{_serverIP}:{_serverPortFirst}";
         }
         public static IPEndPoint GetClientEndPoint(int port)
         {
@@ -23,9 +24,13 @@ namespace ClientServerLibrary
         {
             return $"tcp://{_clientIP}:{port}";
         }
-        public static int GetServerPort()
+        public static int GetServerPortFirst()
         {
-            return _serverPort;
+            return _serverPortFirst;
+        }
+        public static int GetServerPortLast()
+        {
+            return _serverPortLast;
         }
         public static bool IsEquals(string str1, string str2)
         {

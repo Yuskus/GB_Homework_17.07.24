@@ -24,14 +24,10 @@ namespace HomeworkGB9Tests
             var server = new ChatServer<IPEndPoint>(mock); // Создаем сервер и передаем ему Мок
             using (var cts = new CancellationTokenSource())
             {
-                try
-                {
-                    var test = server.ReceiveMessagesAsync(cts.Token);
-                    await Task.Delay(1000);
-                    cts.Cancel();
-                    await test;
-                }
-                catch (OperationCanceledException) { }
+                var test = server.ReceiveSendAsync(cts.Token);
+                await Task.Delay(1000);
+                cts.Cancel();
+                await test;
             }
             
             using var ctx = new ChatDbContext();

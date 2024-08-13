@@ -7,24 +7,31 @@ namespace MessagesSourceNetMQLibrary
 {
     public class MessagesSourceNetMQClient : IMessagesSource<string>
     {
-        private readonly string _remoteAdress;
-        private readonly DealerSocket _socket;
-        public MessagesSourceNetMQClient(string server)
+        private readonly string _remoteRouterAdress;
+        private readonly string _remotePublisherAdress;
+        private readonly DealerSocket _dealerSocket;
+        private readonly SubscriberSocket _subscriberSocket;
+        public MessagesSourceNetMQClient(string name, int routerPort, int publisherPort)
         {
-            _remoteAdress = server;
-            _socket = new DealerSocket();
-            _socket.Connect(_remoteAdress);
+            _remoteRouterAdress = $"tcp://127.0.0.1:{routerPort}";
+            _remotePublisherAdress = $"tcp://127.0.0.1:{publisherPort}";
+            _dealerSocket = new DealerSocket();
+            _dealerSocket.Connect(_remoteRouterAdress);
+            _subscriberSocket = new SubscriberSocket();
+            _subscriberSocket.Connect(_remotePublisherAdress);
+            _subscriberSocket.Subscribe(name);
         }
         public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<string>? builder = null)
         {
-            var request = await _socket.ReceiveFrameStringAsync();
-            return Message.ToMessage(request.Item1);
+            string? _ = (await _subscriberSocket.ReceiveFrameStringAsync(token)).Item1;
+            string? json = (await _subscriberSocket.ReceiveFrameStringAsync(token)).Item1;
+            return Message.ToMessage(json);
         }
 
         public async Task SendAsync(Message message, CancellationToken token, string? endPoint = null)
         {
+            _dealerSocket.SendFrame(message.ToJson());
             await Task.CompletedTask;
-            _socket.SendFrame(message.ToJson());
         }
     }
 }
