@@ -1,14 +1,11 @@
 ﻿using ChatObjectsLibrary;
-using ClientServerLibrary;
 using MessagesSourceLibrary;
-using System.Net;
 
 namespace HomeworkGB9Tests
 {
-    internal class MockMessageSourceServer : IMessagesSource<IPEndPoint>
+    internal class MockMessageSourceServer<T> : IMessagesSource<T> where T : class
     {
         private readonly Queue<Message> fakeMessages = new();
-        private readonly IPEndPoint endPoint = new(IPAddress.Any, 0);
         public MockMessageSourceServer()
         {
             fakeMessages.Enqueue(new Message("Федор") { Command = Command.Register });
@@ -18,13 +15,16 @@ namespace HomeworkGB9Tests
             fakeMessages.Enqueue(new Message("Федор", "Приятно познакомиться, Евгения."));
             fakeMessages.Enqueue(new Message("Евгения", "Взаимно, Федор."));
         }
-        public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<IPEndPoint>? builder)
+        public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<T>? builder)
         {
             await Task.CompletedTask;
-            builder?.BuildEndPoint(endPoint);
-            return fakeMessages.TryDequeue(out var message) ? message : null;
+            if (!fakeMessages.TryDequeue(out var message))
+            {
+                return null;
+            }
+            return message;
         }
-        public async Task SendAsync(Message message, CancellationToken token, IPEndPoint? endPoint)
+        public async Task SendAsync(Message message, CancellationToken token, T? endPoint)
         {
             await Task.CompletedTask;
             return;

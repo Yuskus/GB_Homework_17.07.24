@@ -1,7 +1,5 @@
 using ClientServerLibrary;
 using ModelEFCoreLibrary;
-using System.Net;
-
 
 namespace HomeworkGB9Tests
 {
@@ -18,18 +16,25 @@ namespace HomeworkGB9Tests
         }
 
         [TestMethod]
+        public void Test()
+        {
+            var a = 2;
+            var b = 2;
+            Assert.AreEqual(a, b);
+        }
+
+        [TestMethod]
         public async Task TestReceive()
         {
-            var mock = new MockMessageSourceServer(); // Создаем объект Мока для тестирования
-            var server = new ChatServer<IPEndPoint>(mock); // Создаем сервер и передаем ему Мок
-            using (var cts = new CancellationTokenSource())
-            {
-                var test = server.ReceiveSendAsync(cts.Token);
-                await Task.Delay(1000);
-                cts.Cancel();
-                await test;
-            }
-            
+            await Task.CompletedTask;
+            var mock = new MockMessageSourceServer<string>(); // Создаем объект Мока для тестирования
+            var server = new ChatServer<string>(mock); // Создаем сервер и передаем ему Мок
+
+            using var cts = new CancellationTokenSource();
+            var task = Task.Run(() => server.ReceiveSendAsync(cts.Token));
+
+            await Task.Delay(1000);
+
             using var ctx = new ChatDbContext();
 
             Assert.IsTrue(ctx.Users.Count() == 2, "Пользователи не созданы.");

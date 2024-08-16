@@ -1,6 +1,5 @@
 ﻿using ChatObjectsLibrary;
 using ClientServerLibrary;
-using System.Net;
 
 namespace HomeworkGB9Tests
 {
@@ -13,8 +12,8 @@ namespace HomeworkGB9Tests
         public async Task TestReceive()
         {
             await Task.Delay(1);
-            var mock = new MockMessageSourceClient();
-            var client = new ChatClient<IPEndPoint>("Test", mock);
+            var mock = new MockMessageSourceClient<string>();
+            var client = new ChatClient<string>("Test", mock);
             using var cts = new CancellationTokenSource();
             Task task = client.ReceiveMessagesAsync(cts.Token);
             

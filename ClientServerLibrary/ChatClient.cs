@@ -13,7 +13,9 @@ namespace ClientServerLibrary
         public async Task StartClientAsync()
         {
             using var cts = new CancellationTokenSource();
-            await Task.WhenAll(ReceiveMessagesAsync(cts.Token), SendMessagesAsync(cts));
+            Task[] tasks = [ ReceiveMessagesAsync(cts.Token), SendMessagesAsync(cts) ];
+
+            await Task.WhenAll(tasks);
         }
 
         //отправка сообщений асинхронно
@@ -26,12 +28,9 @@ namespace ClientServerLibrary
 
             while (true)
             {
-                //ожидание сообщений
-                await Task.Delay(150);
-
                 //ввод
-                string text = Chat.EnterText("Вы можете ввести своё сообщение.");
-                string toName = Chat.EnterText("Укажите адресата.");
+                string text = await Chat.EnterTextAsync("Вы можете ввести своё сообщение.", token) ?? "";
+                string toName = await Chat.EnterTextAsync("Укажите адресата.", token) ?? "";
 
                 //проверки
                 if (string.IsNullOrEmpty(text)) continue;
@@ -61,6 +60,8 @@ namespace ClientServerLibrary
 
             //запрос на удаления из списка участников чата
             await Delete();
+
+            await Chat.ExitAsync();
         }
 
         //прием сообщений асинхронно

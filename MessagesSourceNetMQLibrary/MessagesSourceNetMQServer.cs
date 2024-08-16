@@ -23,7 +23,7 @@ namespace MessagesSourceNetMQLibrary
         }
         public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<string>? builder)
         {
-            var multyMessage = await _routerSocket.ReceiveMultipartMessageAsync();
+            var multyMessage = await Task.Run(() => _routerSocket.ReceiveMultipartMessage(), token);
             string json = multyMessage.Last.ConvertToString(Encoding.UTF8);
             var message = Message.ToMessage(json);
             if (message == null) { return null; }
@@ -32,8 +32,7 @@ namespace MessagesSourceNetMQLibrary
         }
         public async Task SendAsync(Message message, CancellationToken token, string? endPoint)
         {
-            await Task.CompletedTask;
-            _publisherSocket.SendMoreFrame(endPoint!).SendFrame(message.ToJson());
+            await Task.Run(() => _publisherSocket.SendMoreFrame(endPoint!).SendFrame(message.ToJson()), token);
         }
     }
 }

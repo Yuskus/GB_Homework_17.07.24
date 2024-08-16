@@ -36,10 +36,16 @@ namespace ClientServerLibrary
         {
             return string.Equals(str1, str2, StringComparison.InvariantCultureIgnoreCase);
         }
-        public static string EnterText(string aboutInput)
+        public static async ValueTask<string?> EnterTextAsync(string aboutInput, CancellationToken token)
         {
-            Console.WriteLine(aboutInput);
-            return Console.ReadLine() ?? "";
+            await Console.Out.WriteLineAsync(aboutInput);
+            return await Console.In.ReadLineAsync(token);
+        }
+        public static async Task ExitAsync()
+        {
+            Console.WriteLine("Запрошен выход. Приложение закроется через секунду.");
+            await Task.Delay(1000);
+            Environment.Exit(0);
         }
     }
 }

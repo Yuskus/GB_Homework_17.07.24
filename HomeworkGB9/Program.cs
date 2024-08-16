@@ -1,7 +1,6 @@
 ﻿using ClientServerLibrary;
 using MessagesSourceNetMQLibrary;
 using MessagesSourceUDPLibrary;
-using NetMQ;
 using System.Net;
 
 namespace HomeworkGB9
@@ -10,16 +9,9 @@ namespace HomeworkGB9
     {
         static async Task Main(string[] args)
         {
-            
             if (args.Length == 0)
             {
-                using var cts = new CancellationTokenSource();
-                new Task(() =>
-                {
-                    Console.ReadKey(true);
-                    cts.Cancel();
-                }).Start();
-                await ServerUsesNetMQ(cts);
+                await ServerUsesNetMQ();
             }
             else
             {
@@ -39,26 +31,21 @@ namespace HomeworkGB9
 
             await Console.Out.WriteLineAsync("До свидания!");
         }
-        public static async Task ServerUsesNetMQ(CancellationTokenSource cts)
+        public static async Task ServerUsesNetMQ()
         {
-            await Task.CompletedTask;
             int serverPort1 = Chat.GetServerPortFirst();
             int serverPort2 = Chat.GetServerPortLast();
             var source = new MessagesSourceNetMQServer(serverPort1, serverPort2);
             var server = new ChatServer<string>(source);
-            using var runtime = new NetMQRuntime();
-            runtime.Run(server.ReceiveSendAsync(cts.Token));
+            await server.StartServerAsync();
         }
         public static async Task ClientUsesNetMQ(string name)
         {
-            await Task.CompletedTask;
             int serverPort1 = Chat.GetServerPortFirst();
             int serverPort2 = Chat.GetServerPortLast();
             var source = new MessagesSourceNetMQClient(name, serverPort1, serverPort2);
             var client = new ChatClient<string>(name, source);
-            using var runtime = new NetMQRuntime();
-            using var cts = new CancellationTokenSource();
-            runtime.Run(client.ReceiveMessagesAsync(cts.Token), client.SendMessagesAsync(cts));
+            await client.StartClientAsync();
         }
         public static async Task ServerUsesUDP()
         {

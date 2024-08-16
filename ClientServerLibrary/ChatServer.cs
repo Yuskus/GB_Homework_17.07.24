@@ -17,7 +17,7 @@ namespace ClientServerLibrary
             Task task = ReceiveSendAsync(cts.Token);
             Console.ReadKey(true);
             cts.Cancel();
-            await task;
+            await Task.WhenAny(Chat.ExitAsync(), task);
         }
 
         //прием сообщений асинхронно
@@ -64,7 +64,6 @@ namespace ClientServerLibrary
                 {
                     //ошибки при приеме или отправке сообщений
                     Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.StackTrace);
                 }
             }
         }

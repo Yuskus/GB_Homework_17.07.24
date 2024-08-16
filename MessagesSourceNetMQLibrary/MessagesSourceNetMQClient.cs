@@ -23,15 +23,14 @@ namespace MessagesSourceNetMQLibrary
         }
         public async Task<Message?> ReceiveAsync(CancellationToken token, MemberBuilder<string>? builder = null)
         {
-            string? _ = (await _subscriberSocket.ReceiveFrameStringAsync(token)).Item1;
-            string? json = (await _subscriberSocket.ReceiveFrameStringAsync(token)).Item1;
+            var _ = await Task.Run(_subscriberSocket.ReceiveFrameString, token);
+            var json = await Task.Run(_subscriberSocket.ReceiveFrameString, token);
             return Message.ToMessage(json);
         }
 
         public async Task SendAsync(Message message, CancellationToken token, string? endPoint = null)
         {
-            _dealerSocket.SendFrame(message.ToJson());
-            await Task.CompletedTask;
+            await Task.Run(() => _dealerSocket.SendFrame(message.ToJson()), token);
         }
     }
 }
